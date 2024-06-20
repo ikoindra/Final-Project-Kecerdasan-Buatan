@@ -1,0 +1,70 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+from keras.models import Sequential
+from keras.layers import Dense
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+
+# Membaca dataset dari file CSV
+# Ubah path menjadi path dari file csv
+data = pd.read_csv('C:/Coding/nyoba/dataset.csv')
+
+# Menghapus kolom '_id' karena tidak dibutuhkan untuk analisis
+data = data.drop(columns=['_id'])
+
+# Mengatur 'Kecamatan' sebagai index
+data.set_index('Kecamatan', inplace=True)
+
+# Menampilkan semua data untuk memastikan data terbaca dengan benar
+print(data)
+
+# Pisahkan fitur dan target (misalnya, prediksi Covid 19 berdasarkan penyakit lainnya)
+X = data.drop(columns=['Tuberkulosis']).values
+y = data['Tuberkulosis'].values
+
+# Bagi dataset menjadi training dan testing set
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Normalisasi fitur
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Membangun model MLP
+model = Sequential()
+model.add(Dense(64, input_dim=X_train_scaled.shape[1], activation='relu'))
+model.add(Dense(32, activation='relu'))
+model.add(Dense(1))  # Karena kita memprediksi nilai kontinu
+
+model.compile(optimizer='adam', loss='mean_squared_error', metrics=['mae'])
+
+# Melatih model
+history = model.fit(X_train_scaled, y_train, epochs=50, batch_size=8, validation_split=0.2)
+
+# Plot training loss
+plt.plot(history.history['loss'], label='Training Loss')
+
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.title('Training and Validation Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.legend()
+plt.show()
+
+# Plot training mean absolute error
+plt.plot(history.history['mae'], label='Training MAE')
+plt.plot(history.history['val_mae'], label='Validation MAE')
+plt.title('Training and Validation MAE')
+plt.xlabel('Epoch')
+plt.ylabel('Mean Absolute Error')
+plt.legend()
+plt.show()
+
+# Prediksi menggunakan model yang telah dilatih
+y_pred = model.predict(X_test_scaled)
+
+# Menampilkan hasil prediksi dan nilai sebenarnya
+prediksi = pd.DataFrame({'Prediksi': y_pred.flatten(), 'Sebenarnya': y_test})
+print(prediksi)
