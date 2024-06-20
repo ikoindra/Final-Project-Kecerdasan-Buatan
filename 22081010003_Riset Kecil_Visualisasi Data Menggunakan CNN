@@ -8,6 +8,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 
 # Membaca dataset dari file CSV
+# Ubah path menjadi path dari file csv
 data = pd.read_csv('C:/Coding/nyoba/dataset.csv')
 
 # Menghapus kolom '_id' karena tidak dibutuhkan untuk analisis
