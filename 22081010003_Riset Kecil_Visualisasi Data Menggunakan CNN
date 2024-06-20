@@ -3,14 +3,12 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 from keras.models import Sequential
-from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
-import matplotlib.pyplot as plt
+from keras.layers import Dense
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
 
 # Membaca dataset dari file CSV
 data = pd.read_csv('C:/Coding/nyoba/dataset.csv')
-
-# Menampilkan semua data untuk memastikan data terbaca dengan benar
-print(data)
 
 # Menghapus kolom '_id' karena tidak dibutuhkan untuk analisis
 data = data.drop(columns=['_id'])
@@ -18,48 +16,54 @@ data = data.drop(columns=['_id'])
 # Mengatur 'Kecamatan' sebagai index
 data.set_index('Kecamatan', inplace=True)
 
-# Membuat heatmap
-plt.figure(figsize=(12, 8))
-sns.heatmap(data, annot=True, cmap='coolwarm', cbar=True)
-plt.title('Heatmap Distribusi Penyakit di Setiap Kecamatan')
-plt.xlabel('Jenis Penyakit')
-plt.ylabel('Kecamatan')
-plt.show()
+# Menampilkan semua data untuk memastikan data terbaca dengan benar
+print(data)
 
-# Konversi data heatmap menjadi numpy array
-heatmap_array = data.values
+# Pisahkan fitur dan target (misalnya, prediksi Covid 19 berdasarkan penyakit lainnya)
+X = data.drop(columns=['Tuberkulosis']).values
+y = data['Tuberkulosis'].values
 
-# Reshape heatmap array to fit into Conv2D (assuming single channel)
-X = heatmap_array.reshape((1, heatmap_array.shape[0], heatmap_array.shape[1], 1))
+# Bagi dataset menjadi training dan testing set
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Buat label dummy untuk contoh ini (sesuaikan dengan data yang ada)
-y = np.array([1])  # Ini hanya contoh, dalam prakteknya, Anda akan memiliki dataset yang lebih besar dengan label yang sesuai
+# Normalisasi fitur
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
 
-# Model CNN
+# Membangun model MLP
 model = Sequential()
-model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(heatmap_array.shape[0], heatmap_array.shape[1], 1)))
-model.add(MaxPooling2D((2, 2)))
-model.add(Flatten())
-model.add(Dense(64, activation='relu'))
-model.add(Dense(1, activation='sigmoid'))  # Ubah menjadi softmax jika multi-class
+model.add(Dense(64, input_dim=X_train_scaled.shape[1], activation='relu'))
+model.add(Dense(32, activation='relu'))
+model.add(Dense(1))  # Karena kita memprediksi nilai kontinu
 
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])  # Ubah loss jika multi-class
+model.compile(optimizer='adam', loss='mean_squared_error', metrics=['mae'])
 
-# Fit model (dalam contoh ini hanya satu data, dalam prakteknya gunakan dataset yang lebih besar)
-history = model.fit(X, y, epochs=10, batch_size=1, verbose=1)
+# Melatih model
+history = model.fit(X_train_scaled, y_train, epochs=50, batch_size=8, validation_split=0.2)
 
 # Plot training loss
 plt.plot(history.history['loss'], label='Training Loss')
-plt.title('Training Loss')
+
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.title('Training and Validation Loss')
 plt.xlabel('Epoch')
 plt.ylabel('Loss')
 plt.legend()
 plt.show()
 
-# Plot training accuracy
-plt.plot(history.history['accuracy'], label='Training Accuracy')
-plt.title('Training Accuracy')
+# Plot training mean absolute error
+plt.plot(history.history['mae'], label='Training MAE')
+plt.plot(history.history['val_mae'], label='Validation MAE')
+plt.title('Training and Validation MAE')
 plt.xlabel('Epoch')
-plt.ylabel('Accuracy')
+plt.ylabel('Mean Absolute Error')
 plt.legend()
 plt.show()
+
+# Prediksi menggunakan model yang telah dilatih
+y_pred = model.predict(X_test_scaled)
+
+# Menampilkan hasil prediksi dan nilai sebenarnya
+prediksi = pd.DataFrame({'Prediksi': y_pred.flatten(), 'Sebenarnya': y_test})
+print(prediksi)
